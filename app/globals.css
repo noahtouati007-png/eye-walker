@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --card: #1a1a28;
+  --border: #2a2a40;
+  --text-primary: #f0f0ff;
+  --text-secondary: #8888aa;
+
+  --blue: #00d4ff;
+  --purple: #a855f7;
+  --orange: #f97316;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #eab308;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: rgba(168, 85, 247, 0.4);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a55;
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--font-orbitron), var(--font-geist-sans), sans-serif;
+  }
+
+  .glass {
+    background: rgba(26, 26, 40, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+  }
+
+  .glass-strong {
+    background: rgba(18, 18, 26, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+
+  .tracking-brand {
+    letter-spacing: 0.18em;
+  }
+
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+    background: var(--card);
+  }
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.06),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* focus ring for accessibility */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .dash-row {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* Level-7 ultimate glow */
+@keyframes legend-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.5), 0 0 40px rgba(0, 212, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.8), 0 0 60px rgba(0, 212, 255, 0.5);
+  }
+}
+.legend-glow {
+  animation: legend-glow 2.5s ease-in-out infinite;
+}
