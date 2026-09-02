@@ -1,5 +1,7 @@
 # Eye-Walker 👁️
 
+**🔴 En ligne : [eye-walker.vercel.app](https://eye-walker.vercel.app)** — déploiement automatique à chaque push sur `main`.
+
 Application d'entraînement Hyrox **Solo Pro** — programme structuré 7 séances/semaine, XP, niveaux, badges, timer intégré et surcharge progressive. 100 % client-side (localStorage), prête à déployer sur Vercel.
 
 ## Stack
