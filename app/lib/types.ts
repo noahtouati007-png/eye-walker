@@ -31,6 +31,9 @@ export interface SessionBlock {
   sets?: number;
   weight?: string;
   intensity?: string;
+  distance?: string; // ex: "400m", "12,5m sled"
+  rpe?: string; // ex: "RPE 8", "9/10"
+  tempo?: string; // ex: "31X1", "cadence 26 s/m"
   notes?: string;
 }
 
@@ -40,6 +43,11 @@ export interface SessionConfig {
   blocks: SessionBlock[];
   xpReward: number;
   estimatedDuration: number; // minutes
+  variantIndex: number;
+  variantName: string;
+  focus: string; // physiological / transfer focus of this variant
+  progression: string; // long-term progression cue for this week
+  weekNumber: number;
 }
 
 export interface WeekLogEntry {

@@ -18,8 +18,18 @@ import {
   currentPhase,
   recommendedDifficulty,
   enforcePhaseDifficulty,
+  weekNumberSince,
 } from "../lib/progressiveOverload";
+import { variantCount } from "../lib/workouts";
 import type { SessionType, Difficulty } from "../lib/types";
+
+export interface SessionRef {
+  type: SessionType;
+  difficulty: Difficulty;
+  week: number;
+  phaseIndex: number;
+  variantIndex: number;
+}
 
 // Stats pulls in Recharts — client-only.
 const Stats = dynamic(() => import("./Stats").then((m) => m.Stats), {
@@ -30,15 +40,21 @@ const Stats = dynamic(() => import("./Stats").then((m) => m.Stats), {
 export default function App() {
   const { state, hydrated, onboardedGate, levelUpInfo, clearLevelUp } = useAppGates();
   const [tab, setTab] = useState<NavTab>("dashboard");
-  const [modal, setModal] = useState<{ type: SessionType; difficulty: Difficulty } | null>(null);
+  const [modal, setModal] = useState<SessionRef | null>(null);
 
   // Per-session difficulty selection (persisted, resolved against phase).
   const [difficulties, setDifficulties] = useLocalStorage<Partial<Record<SessionType, Difficulty>>>(
     "ew_difficulties",
     {}
   );
+  // Per-session variant override (persisted). Overrides the weekly rotation.
+  const [variantOverrides, setVariantOverrides] = useLocalStorage<Partial<Record<SessionType, number>>>(
+    "ew_variants",
+    {}
+  );
 
   const phase = currentPhase(state.user.startDate);
+  const currentWeek = weekNumberSince(state.user.startDate);
 
   const getDifficulty = useCallback(
     (type: SessionType): Difficulty => {
@@ -55,9 +71,38 @@ export default function App() {
     [setDifficulties]
   );
 
+  const getVariantIndex = useCallback(
+    (type: SessionType, week: number): number => {
+      const override = variantOverrides[type];
+      if (override !== undefined) return override % variantCount(type);
+      return week % variantCount(type);
+    },
+    [variantOverrides]
+  );
+
+  const cycleVariant = useCallback(
+    (type: SessionType, week: number) => {
+      setVariantOverrides((prev) => {
+        const current = prev[type] ?? week % variantCount(type);
+        return { ...prev, [type]: (current + 1) % variantCount(type) };
+      });
+    },
+    [setVariantOverrides]
+  );
+
   const openSession = useCallback(
-    (type: SessionType) => setModal({ type, difficulty: getDifficulty(type) }),
-    [getDifficulty]
+    (type: SessionType, week: number = currentWeek, phaseIndex: number = phase.index) =>
+      setModal({
+        type,
+        difficulty: enforcePhaseDifficulty(
+          phaseIndex,
+          difficulties[type] ?? recommendedDifficulty(phaseIndex)
+        ),
+        week,
+        phaseIndex,
+        variantIndex: getVariantIndex(type, week),
+      }),
+    [currentWeek, phase.index, difficulties, getVariantIndex]
   );
 
   const todayType = WEEK_LAYOUT[(new Date().getDay() + 6) % 7].type;
@@ -79,13 +124,21 @@ export default function App() {
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
             {tab === "dashboard" && (
-              <Dashboard onOpenSession={openSession} getDifficulty={getDifficulty} />
+              <Dashboard
+                onOpenSession={openSession}
+                getDifficulty={getDifficulty}
+                getVariantIndex={getVariantIndex}
+                currentWeek={currentWeek}
+                phaseIndex={phase.index}
+              />
             )}
             {tab === "programme" && (
               <Programme
                 onOpenSession={openSession}
                 getDifficulty={getDifficulty}
                 setDifficulty={setDifficulty}
+                getVariantIndex={getVariantIndex}
+                cycleVariant={cycleVariant}
               />
             )}
             {tab === "stats" && <Stats />}
@@ -99,6 +152,9 @@ export default function App() {
           <SessionDetail
             type={modal.type}
             difficulty={modal.difficulty}
+            week={modal.week}
+            phaseIndex={modal.phaseIndex}
+            variantIndex={modal.variantIndex}
             onClose={() => setModal(null)}
           />
         )}

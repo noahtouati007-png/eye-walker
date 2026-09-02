@@ -25,21 +25,19 @@ export function currentPhase(startDate: string, ref: Date = new Date()): Phase {
 }
 
 /** Difficulty the program recommends for a given phase. */
-export function recommendedDifficulty(phaseIndex: PhaseIndex): Difficulty {
+export function recommendedDifficulty(phaseIndex: number): Difficulty {
   switch (phaseIndex) {
-    case 0:
-      return "medium";
-    case 1:
-      return "medium";
     case 2:
       return "hard";
     case 3:
       return "easy";
+    default:
+      return "medium";
   }
 }
 
 /** Deload forces every session to easy. */
-export function enforcePhaseDifficulty(phaseIndex: PhaseIndex, selected: Difficulty): Difficulty {
+export function enforcePhaseDifficulty(phaseIndex: number, selected: Difficulty): Difficulty {
   return phaseIndex === 3 ? "easy" : selected;
 }
 

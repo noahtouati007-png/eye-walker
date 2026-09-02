@@ -16,15 +16,25 @@ import type { SessionType, Difficulty } from "../lib/types";
 export function Dashboard({
   onOpenSession,
   getDifficulty,
+  getVariantIndex,
+  currentWeek,
+  phaseIndex,
 }: {
   onOpenSession: (t: SessionType) => void;
   getDifficulty: (t: SessionType) => Difficulty;
+  getVariantIndex: (t: SessionType, week: number) => number;
+  currentWeek: number;
+  phaseIndex: number;
 }) {
   const { state, completeChallenge } = useApp();
   const todayIdx = (new Date().getDay() + 6) % 7;
   const todayType = WEEK_LAYOUT[todayIdx].type;
   const difficulty = getDifficulty(todayType);
-  const session = getSession(todayType, difficulty);
+  const session = getSession(todayType, difficulty, {
+    week: currentWeek,
+    phaseIndex,
+    variantIndex: getVariantIndex(todayType, currentWeek),
+  });
   const meta = SESSION_META[todayType];
   const phase = currentPhase(state.user.startDate);
 
@@ -75,6 +85,13 @@ export function Dashboard({
               <h2 className="font-display" style={{ fontSize: 28, fontWeight: 800, margin: "4px 0" }}>
                 {meta.label}
               </h2>
+              <div
+                className="font-display"
+                style={{ fontSize: 14, color: meta.accent, letterSpacing: "0.04em", marginBottom: 2 }}
+              >
+                {session.variantName}
+              </div>
+              <div style={{ fontSize: 12, color: "#8888aa", marginBottom: 8 }}>{session.focus}</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <DifficultyBadge difficulty={difficulty} />
                 <span style={{ color: "#8888aa", fontSize: 13 }}>~ {session.estimatedDuration} min</span>

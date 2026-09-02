@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
-import { X, ChevronDown, Flame, Zap } from "lucide-react";
+import { X, ChevronDown, Flame, Zap, TrendingUp } from "lucide-react";
 import { useApp } from "./AppProvider";
 import { getSession, SESSION_DESCRIPTIONS, xpForDifficulty } from "../lib/workouts";
 import { SESSION_META, DIFFICULTY_META, gradient } from "../lib/theme";
@@ -25,10 +25,16 @@ const Timer = dynamic(() => import("./Timer"), {
 export function SessionDetail({
   type,
   difficulty,
+  week,
+  phaseIndex,
+  variantIndex,
   onClose,
 }: {
   type: SessionType;
   difficulty: Difficulty;
+  week: number;
+  phaseIndex: number;
+  variantIndex: number;
   onClose: () => void;
 }) {
   const { state, completeSession } = useApp();
@@ -44,8 +50,8 @@ export function SessionDetail({
   const custom = state.customSessions[type];
 
   const session = useMemo(
-    () => getSession(type, difficulty, custom),
-    [type, difficulty, custom]
+    () => getSession(type, difficulty, { week, phaseIndex, variantIndex, customWork: custom }),
+    [type, difficulty, week, phaseIndex, variantIndex, custom]
   );
 
   const xpToEarn = xpForDifficulty(difficulty) + (difficulty === "hard" ? XP.modifiedHarder : 0);
@@ -122,10 +128,13 @@ export function SessionDetail({
             <X size={18} />
           </button>
           <div style={{ fontSize: 40 }}>{meta.icon}</div>
-          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: "#fff", margin: "6px 0" }}>
-            {meta.label}
+          <h1 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: "#fff", margin: "6px 0 2px" }}>
+            {meta.label} — {session.variantName}
           </h1>
-          <p style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, maxWidth: 420 }}>
+          <div style={{ color: "#fff", fontSize: 13, fontWeight: 600, opacity: 0.95 }}>
+            🎯 {session.focus}
+          </div>
+          <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 12.5, maxWidth: 440, marginTop: 6 }}>
             {SESSION_DESCRIPTIONS[type]}
           </p>
           <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
@@ -155,6 +164,22 @@ export function SessionDetail({
                 <ModeToggle active={freeMode} onClick={() => setFreeMode(true)}>
                   Mode libre
                 </ModeToggle>
+              </div>
+
+              {/* Progression cue */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  background: "rgba(168,85,247,0.1)",
+                  border: "1px solid rgba(168,85,247,0.3)",
+                }}
+              >
+                <TrendingUp size={18} color="#a855f7" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 12.5, color: "#f0f0ff" }}>{session.progression}</span>
               </div>
 
               {/* Warm-up */}
@@ -434,9 +459,12 @@ function BlockRow({
   const parts: string[] = [];
   if (block.sets) parts.push(`${block.sets} séries`);
   if (block.reps) parts.push(`${block.reps} reps`);
+  if (block.distance) parts.push(block.distance);
   if (block.duration) parts.push(secondsToClock(block.duration));
   if (block.weight) parts.push(block.weight);
   if (block.intensity) parts.push(block.intensity);
+  if (block.tempo) parts.push(block.tempo);
+  if (block.rpe) parts.push(block.rpe);
 
   return (
     <button

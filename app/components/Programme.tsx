@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Play, Pencil, Plus, Trash2, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronUp, Play, Pencil, Plus, Trash2, RotateCcw, RefreshCw } from "lucide-react";
 import { useApp } from "./AppProvider";
 import { WEEK_LAYOUT, SESSION_META, gradient, DIFFICULTY_META } from "../lib/theme";
 import { getSession, SESSION_DESCRIPTIONS } from "../lib/workouts";
@@ -17,10 +17,14 @@ export function Programme({
   onOpenSession,
   getDifficulty,
   setDifficulty,
+  getVariantIndex,
+  cycleVariant,
 }: {
-  onOpenSession: (t: SessionType) => void;
+  onOpenSession: (t: SessionType, week?: number, phaseIndex?: number) => void;
   getDifficulty: (t: SessionType) => Difficulty;
   setDifficulty: (t: SessionType, d: Difficulty) => void;
+  getVariantIndex: (t: SessionType, week: number) => number;
+  cycleVariant: (t: SessionType, week: number) => void;
 }) {
   const { state } = useApp();
   const [weekOffset, setWeekOffset] = useState(0);
@@ -91,12 +95,16 @@ export function Programme({
             key={d.day}
             day={d.day}
             type={d.type}
+            week={weekNum}
+            phaseIndex={phase.index}
+            variantIndex={getVariantIndex(d.type, weekNum)}
+            onCycleVariant={() => cycleVariant(d.type, weekNum)}
             completed={!!logs[d.type]?.completed}
             difficulty={getDifficulty(d.type)}
             onSetDifficulty={(diff) => setDifficulty(d.type, diff)}
             expanded={expanded === d.type}
             onToggle={() => setExpanded((e) => (e === d.type ? null : d.type))}
-            onStart={() => onOpenSession(d.type)}
+            onStart={() => onOpenSession(d.type, weekNum, phase.index)}
             deload={phase.index === 3}
           />
         ))}
@@ -127,6 +135,10 @@ function NavArrow({ children, onClick }: { children: React.ReactNode; onClick: (
 function SessionCard({
   day,
   type,
+  week,
+  phaseIndex,
+  variantIndex,
+  onCycleVariant,
   completed,
   difficulty,
   onSetDifficulty,
@@ -137,6 +149,10 @@ function SessionCard({
 }: {
   day: string;
   type: SessionType;
+  week: number;
+  phaseIndex: number;
+  variantIndex: number;
+  onCycleVariant: () => void;
   completed: boolean;
   difficulty: Difficulty;
   onSetDifficulty: (d: Difficulty) => void;
@@ -150,7 +166,10 @@ function SessionCard({
   const [editing, setEditing] = useState(false);
   const custom = state.customSessions[type];
 
-  const session = useMemo(() => getSession(type, difficulty, custom), [type, difficulty, custom]);
+  const session = useMemo(
+    () => getSession(type, difficulty, { week, phaseIndex, variantIndex, customWork: custom }),
+    [type, difficulty, week, phaseIndex, variantIndex, custom]
+  );
   const work = session.blocks.filter((b) => b.type === "work" || b.type === "rest");
 
   const [draft, setDraft] = useState<SessionBlock[]>(work);
@@ -193,7 +212,10 @@ function SessionCard({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, color: "#8888aa" }}>{day}</div>
           <div className="font-display" style={{ fontSize: 16, fontWeight: 700 }}>{meta.label}</div>
-          <div style={{ fontSize: 12, color: "#8888aa" }}>
+          <div style={{ fontSize: 12, color: meta.accent, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {session.variantName}
+          </div>
+          <div style={{ fontSize: 11.5, color: "#8888aa" }}>
             ~ {session.estimatedDuration} min · +{session.xpReward} XP
           </div>
         </div>
@@ -220,6 +242,33 @@ function SessionCard({
           >
             <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 14 }}>
               <p style={{ fontSize: 13, color: "#8888aa" }}>{SESSION_DESCRIPTIONS[type]}</p>
+
+              {/* Format / variant selector */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  background: `${meta.accent}12`,
+                  border: `1px solid ${meta.accent}33`,
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div className="font-display" style={{ fontSize: 13, color: meta.accent }}>{session.variantName}</div>
+                  <div style={{ fontSize: 11.5, color: "#8888aa" }}>{session.focus}</div>
+                </div>
+                <button
+                  onClick={onCycleVariant}
+                  className="focus-ring"
+                  aria-label="Changer de format"
+                  style={{ ...smallBtn, color: meta.accent, borderColor: `${meta.accent}66`, flexShrink: 0 }}
+                >
+                  <RefreshCw size={13} /> Format
+                </button>
+              </div>
 
               {/* Difficulty selector */}
               <div>
@@ -378,6 +427,26 @@ function BlockEditor({
               value={b.intensity ?? ""}
               onChange={(v) => update(b.id, { intensity: v || undefined })}
             />
+            <LabeledInput
+              label="Distance"
+              value={b.distance ?? ""}
+              onChange={(v) => update(b.id, { distance: v || undefined })}
+            />
+            <LabeledInput
+              label="Charge / poids"
+              value={b.weight ?? ""}
+              onChange={(v) => update(b.id, { weight: v || undefined })}
+            />
+            <LabeledInput
+              label="Tempo / cadence"
+              value={b.tempo ?? ""}
+              onChange={(v) => update(b.id, { tempo: v || undefined })}
+            />
+            <LabeledInput
+              label="RPE"
+              value={b.rpe ?? ""}
+              onChange={(v) => update(b.id, { rpe: v || undefined })}
+            />
           </div>
           <LabeledInput
             label="Notes"
@@ -462,9 +531,12 @@ function formatBlockMeta(b: SessionBlock): string {
   const parts: string[] = [];
   if (b.sets) parts.push(`${b.sets}×`);
   if (b.reps) parts.push(`${b.reps} reps`);
+  if (b.distance) parts.push(b.distance);
   if (b.duration) parts.push(secondsToClock(b.duration));
   if (b.weight) parts.push(b.weight);
   if (b.intensity) parts.push(b.intensity);
+  if (b.tempo) parts.push(b.tempo);
+  if (b.rpe) parts.push(b.rpe);
   return parts.join(" · ") || (b.type === "rest" ? "Repos" : "");
 }
 
